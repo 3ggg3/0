@@ -1,0 +1,115 @@
+(function () {
+  'use strict';
+var ptyScriptName   = "Get URLs from Search Results"
+var ptyScriptVer     = "2.0"    // ADD option for other Search engines
+var ptyScriptDate   = "2019-10-26"
+var ptyScriptAuthor = "@JMichaelTX"  // based on script by @ccstone
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PURPOSE:  Get the Links from the Results of a Search Engine
+            • Could be Google or other
+            • As determined by the KM GS__XPath variable
+
+RETURNS:  One of these, as text:
+  • IF SUCCESSFUL:
+    • List of Links, either just URL or in Markdown format (per KM Variable)
+  • "[ERROR]" at start of results if a script error occurred.
+
+KM VARIABALES REQUIRED:
+  • GS__Max_Links  -- max number of links to return
+  • GS__Return_Data -- Data to return; use "MD" for Markdown
+
+KM VARIABLES SET:
+  • NONE
+
+REF:
+  • Macro/Script by @ccstone (Chris Stone), 2015-12-04
+    • [Copy URLs from Google Search Engine Results Page - general - Keyboard Maestro Discourse](https://forum.keyboardmaestro.com/t/copy-urls-from-google-search-engine-results-page/2512/2)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+var returnResults = "TBD"  // Set your results to this var
+
+try {
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+//debugger;
+
+  //--- GET KM VARIABLES ---
+  //    (use default if not found)
+  var maxLinks      = document.kmvar.GS__Max_Links || 25;  // max number of links returned
+  var returnData    = document.kmvar.GS__Return_Data || "URL";  // use "MD" for MarkDown link
+  var xPath         = document.kmvar.GS__XPath || '//*[@class="r"]/a'   // default to Google
+
+  //--- SETUP XPATH ---
+  //  XPath finds the first element with specified class
+  //  In this case:  <h3 class="r">  (for Google)
+  //  and then the first anchor tag after that
+
+  /*   ~~~ EXAMPLE xPaths ~~~
+  xPath = '//*[contains(@class, "search-result__info")]/a'  // LinkedIn Search
+  xPath = '//*[@class="r"]/a'                               // Google Search
+  */
+
+  var xpathResults = document.evaluate(xPath, document, null, 0, null);
+
+  //--- GET FIRST LINK ---
+  var oNode = xpathResults.iterateNext();
+
+  var nodeList = [];
+  var linkCount = 0;
+  var hrefStr;
+  var returnStr;
+  var linkText;
+
+  //--- LOOP WHILE A LINK IS FOUND, AND ≤ MAX LINKS ---
+
+  while (oNode && (linkCount < maxLinks)) {
+
+    if (oNode.href !== hrefStr) {
+      linkCount += 1;
+      hrefStr = oNode.href;
+      linkText = oNode.textContent;
+
+      //--- RETURN MARKDOWN LINK IF REQUESTED ---
+      if (returnData === "MD") {
+        returnStr = "[" + linkText + "](" + hrefStr + ")";
+      }
+      else {
+        returnStr = hrefStr;
+      }
+
+      //--- APPEND TO URL LIST ---
+      nodeList.push(returnStr);
+    }
+
+    //--- GET NEXT LINK ---
+    oNode = xpathResults.iterateNext();
+
+  }  // END while LOOP
+
+  //--- RETURN WITH ONE URL PER LINE ---
+  returnResults = nodeList.join('\n');
+
+  //~~~~ END TRY ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+} catch (pError) {
+
+    if (!oError.message) {
+      oError.message = pError.toString();
+    }
+
+    oError.message = "[ERROR]"
+      + "\n\nError Number: " + oError.errorNumber + "\n"
+      + oError.message
+      + "\n\nSCRIPT:     " + ptyScriptName + "   Ver: " + ptyScriptVer
+      + "\n\nPAGE TITLE:   " + document.title
+      + "\nPAGE URL:   " + document.URL;
+
+    returnResults = oError.message;  
+} // END catch
+//~~~~ END TRY/CATCH BLOCK ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+return returnResults
+
+
+})();
